@@ -31,7 +31,6 @@ app.get('/api/users/:id', (req, res) => {
 // получение отправленных данных
 app.use(jsonParser)
 app.post('/api/users', (req, res) => {
-   // console.log('Body:', req.body)
    if(!req.body) return res.status(400)
    let user = {
       name: req.body.name,
@@ -42,7 +41,6 @@ app.post('/api/users', (req, res) => {
    user.id = maxId + 1 
    users.push(user)
    let data = JSON.stringify(users)
-   // console.log('Post user: ', user)
    fs.writeFileSync('users.json', data)
    res.send(data)
 })
