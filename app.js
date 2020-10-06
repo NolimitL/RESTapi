@@ -1,18 +1,59 @@
 const fs = require('fs');
 const bodyParser = require('body-parser');
-const express = require('express')
+const express = require('express');
+const MongoClient = require('mongodb').MongoClient
 
 const app = express()
 const jsonParser = bodyParser.json()
+const uri_db = 'mongodb+srv://usersapirest:1w3r5y7i@cluster0.tcvb4.mongodb.net/users?retryWrites=true&w=majority' //usersapirest - 1w3r5y7i
+// подключение к базе данных
+const client = new MongoClient(uri_db,
+   { 
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+   });
 
-app.use(express.static(__dirname + '/public'))
+   
+// ---- 1 option
+// client.connect().then(result => {
+//    const database = client.db('users_list')
+//    const collection = database.collection('users')
+   
+//    // console.log('[Result]:', result)
+// }, err => {
+//    console.log(`[Err]: ${err}`)
+// }).catch(err => console.log(`[ERROR Promise]: ${err}`))
+
+(async () => {
+   try {
+      await client.connect()
+      const database = client.db('users_list')
+      const collection = database.collection('users')
+      // const data = await collection.insertOne({
+      //    name: 'Max',
+      //    age:22,
+      //    _id: 10   
+      // })
+      // console.log(data.ops)
+      const allUsers = await collection.find({})
+         // .project({'_id': 0, 'age': 1}) // for modification a responsed collection
+      // const users = await (await allUsers.toArray()).filter(u => u.age == 45)
+      const users = await allUsers.toArray()
+      console.log('All users:', users)
+   } catch (e) {
+      console.log(e)
+   }
+   client.close()
+})()
+
+// подключение middelwear
+// app.use(express.static(__dirname + '/public'))
 
 // получение списка данных
 app.get('/api/users', (req, res) => {
    const content = fs.readFileSync('users.json', 'utf-8')
    const users = JSON.parse(content)
    res.send(users)
-   // res.send('API done!')
 })
 
 // получение одного пользователя по id
@@ -82,7 +123,6 @@ app.put('/api/users/:id', (req, res) =>{
    }
 })
 
-// Listener
 app.listen(3000, () => {
    console.log('[Server has been started...]')
 })
