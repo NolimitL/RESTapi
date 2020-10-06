@@ -24,37 +24,45 @@ const client = new MongoClient(uri_db,
 //    console.log(`[Err]: ${err}`)
 // }).catch(err => console.log(`[ERROR Promise]: ${err}`))
 
-(async () => {
+async function db(){
    try {
       await client.connect()
       const database = client.db('users_list')
       const collection = database.collection('users')
+      const users = await collection.find({}).project({'_id':0}).toArray()
+      return users
       // const data = await collection.insertOne({
       //    name: 'Max',
       //    age:22,
       //    _id: 10   
       // })
       // console.log(data.ops)
-      const allUsers = await collection.find({})
+      // const allUsers = await collection.find({})
          // .project({'_id': 0, 'age': 1}) // for modification a responsed collection
       // const users = await (await allUsers.toArray()).filter(u => u.age == 45)
-      const users = await allUsers.toArray()
-      console.log('All users:', users)
+      // const users = await allUsers.toArray()
+      // console.log('All users:', users)
    } catch (e) {
-      console.log(e)
+      console.log('ERROR: ', e)
    }
    client.close()
-})()
+}
+
+app.get('/api/users', async (req, res) =>{
+   const users = await db()
+   console.log('All users: ', users)
+   res.send(users)
+})
 
 // подключение middelwear
 // app.use(express.static(__dirname + '/public'))
 
 // получение списка данных
-app.get('/api/users', (req, res) => {
-   const content = fs.readFileSync('users.json', 'utf-8')
-   const users = JSON.parse(content)
-   res.send(users)
-})
+// app.get('/api/users', (req, res) => {
+//    const content = fs.readFileSync('users.json', 'utf-8')
+//    const users = JSON.parse(content)
+//    res.send(users)
+// })
 
 // получение одного пользователя по id
 app.get('/api/users/:id', (req, res) => {
