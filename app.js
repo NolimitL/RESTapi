@@ -24,21 +24,43 @@ const client = new MongoClient(uri_db,
 //    console.log(`[Err]: ${err}`)
 // }).catch(err => console.log(`[ERROR Promise]: ${err}`))
 
-async function db(){
+async function db(options = {
+   id: null,
+   all: {
+      _a:true,
+   },
+   delete: false,
+   put: {
+      name: null,
+      age: null,
+      id: null
+   },
+   post: {
+      name: null,
+      age: null,
+      id: null
+   }
+}){
    try {
-      await client.connect()
+      await client.connect().catch(err => console.log('[ERROR while conecting with DB]:', err))
       const database = client.db('users_list')
       const collection = database.collection('users')
-      const users = await collection.find({}).project({'_id':0}).toArray()
-      return users
-      // const data = await collection.insertOne({
-      //    name: 'Max',
-      //    age:22,
-      //    _id: 10   
-      // })
+      // console.log(typeof options.id);
+      // console.log(options.id);
+      if (options.id === null){
+         const users = await collection.find({}).toArray()
+         return users
+      }else if(options.id !== null){
+         if (options.all._) {
+            
+         }
+         const user = await collection
+      }
+
+      // const users = await collection.find({}).project({'_id':0}).toArray()  // for modification a responsed collection
       // console.log(data.ops)
       // const allUsers = await collection.find({})
-         // .project({'_id': 0, 'age': 1}) // for modification a responsed collection
+         // .project({'_id': 0, 'age': 1})
       // const users = await (await allUsers.toArray()).filter(u => u.age == 45)
       // const users = await allUsers.toArray()
       // console.log('All users:', users)
@@ -48,21 +70,18 @@ async function db(){
    client.close()
 }
 
+// подключение middelwear
+app.use(jsonParser)
+
 app.get('/api/users', async (req, res) =>{
-   const users = await db()
+   const users = await db({id:2})
    console.log('All users: ', users)
    res.send(users)
+   // res.send()
 })
 
 // подключение middelwear
 // app.use(express.static(__dirname + '/public'))
-
-// получение списка данных
-// app.get('/api/users', (req, res) => {
-//    const content = fs.readFileSync('users.json', 'utf-8')
-//    const users = JSON.parse(content)
-//    res.send(users)
-// })
 
 // получение одного пользователя по id
 app.get('/api/users/:id', (req, res) => {
@@ -78,7 +97,6 @@ app.get('/api/users/:id', (req, res) => {
 })
 
 // получение отправленных данных
-app.use(jsonParser)
 app.post('/api/users', (req, res) => {
    if(!req.body) return res.status(400)
    let user = {
