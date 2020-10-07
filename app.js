@@ -5,6 +5,7 @@ const MongoClient = require('mongodb').MongoClient
 
 const app = express()
 const jsonParser = bodyParser.json()
+const PORT = process.env.PORT || 3000
 const uri_db = 'mongodb+srv://usersapirest:1w3r5y7i@cluster0.tcvb4.mongodb.net/users?retryWrites=true&w=majority' //usersapirest - 1w3r5y7i
 // подключение к базе данных
 const client = new MongoClient(uri_db,
@@ -24,71 +25,74 @@ const client = new MongoClient(uri_db,
 //    console.log(`[Err]: ${err}`)
 // }).catch(err => console.log(`[ERROR Promise]: ${err}`))
 
-async function db(options = {
-   id: null,
-   all: {
-      _a:true,
-   },
-   delete: false,
-   put: {
-      name: null,
-      age: null,
-      id: null
-   },
-   post: {
-      name: null,
-      age: null,
-      id: null
-   }
-}){
-   try {
-      await client.connect().catch(err => console.log('[ERROR while conecting with DB]:', err))
-      const database = client.db('users_list')
-      const collection = database.collection('users')
-      // console.log(typeof options.id);
-      // console.log(options.id);
-      if (options.id === null){
-         const users = await collection.find({}).toArray()
-         return users
-      }else if(options.id !== null){
-         if (options.all._) {
-            
-         }
-         const user = await collection
-      }
+// async function db(){
+//    try {
+//       await client.connect().catch(err => console.log('[ERROR while connecting to DB]:', err))
+//       const database = client.db('users_list')
+//       const collection = database.collection('users')
+//       // console.log(typeof options.id);
+//       // console.log(options.id);
 
-      // const users = await collection.find({}).project({'_id':0}).toArray()  // for modification a responsed collection
-      // console.log(data.ops)
-      // const allUsers = await collection.find({})
-         // .project({'_id': 0, 'age': 1})
-      // const users = await (await allUsers.toArray()).filter(u => u.age == 45)
-      // const users = await allUsers.toArray()
-      // console.log('All users:', users)
-   } catch (e) {
-      console.log('ERROR: ', e)
-   }
-   client.close()
-}
+//       // if (options.id === null){
+//       //    const users = await collection.find({}).toArray()
+//       //    return users
+//       // }else if(options.id !== null){
+//       //    if (options.all._) {
+            
+//       //    }
+//       //    const user = await collection
+//       // }
+
+//       // const users = await collection.find({}).project({'_id':0}).toArray()  // for modification a responsed collection
+//       // console.log(data.ops)
+//       // const allUsers = await collection.find({})
+//          // .project({'_id': 0, 'age': 1})
+//       // const users = await (await allUsers.toArray()).filter(u => u.age == 45)
+//       // const users = await allUsers.toArray()
+//       // console.log('All users:', users)
+//    } catch (e) {
+//       console.log('ERROR: ', e)
+//    }
+//    client.close()
+// }
+
+(async ()=>{
+   await client.connect()
+      .then(() => console.log('[Connecting is successfully]'))
+      .catch(e => console.log('[ERROR with connecting to DB]', e))
+   app.locals.collection = client.db('users_list').collection('users')
+   app.listen(PORT, () => {
+      console.log(`[Server has been started on port ${PORT}...]`)
+   })
+})()
 
 // подключение middelwear
 app.use(jsonParser)
 
+// получение всех данных
 app.get('/api/users', async (req, res) =>{
-   const users = await db({id:2})
-   console.log('All users: ', users)
+   const collection = app.locals.collection
+   const users = await collection.find({}).toArray()
+   console.log(users);
    res.send(users)
-   // res.send()
 })
+
+
+// app.get('/api/users', async (req, res) =>{
+//    const users = await db({id:2})
+//    console.log('All users: ', users)
+//    res.send(users)
+//    // res.send()
+// })
 
 // подключение middelwear
 // app.use(express.static(__dirname + '/public'))
 
 // получение одного пользователя по id
-app.get('/api/users/:id', (req, res) => {
+app.get('/api/users/:id', async (req, res) => {
    const id = +req.params.id
-   const content = fs.readFileSync('users.json', {encoding: 'utf-8'})
-   const users = JSON.parse(content)
-   const user = users.find(person => person.id === id)
+   const collection = app.locals.collection
+   const user = await collection.findOne({id: id})
    if (user) {
       res.send(user)
    } else {
@@ -97,20 +101,35 @@ app.get('/api/users/:id', (req, res) => {
 })
 
 // получение отправленных данных
-app.post('/api/users', (req, res) => {
-   if(!req.body) return res.status(400)
+app.post('/api/users', async (req, res) => {
+   if (!req.body) return res.status(400);
    let user = {
       name: req.body.name,
       age: req.body.age
    }
-   let users = JSON.parse(fs.readFileSync('users.json', {encoding: 'utf-8'}))
-   const maxId = Math.max.apply(this, users.map(u => +u.id))
-   user.id = maxId + 1 
-   users.push(user)
-   let data = JSON.stringify(users)
-   fs.writeFileSync('users.json', data)
-   res.send(data)
+   let maxID = await app.locals.collection.find({}).project({'_id': 0, 'name': 0, 'age': 0, }).toArray()
+   maxID = Math.max.apply(Math, maxID.map(e => e.id).filter(e => e != undefined))
+   user.id = maxID + 1
+   const result = await app.locals.collection.insertOne(user)
+   console.log('result:', result.ops);
+   res.status(200).send('OK')
 })
+
+// // получение отправленных данных
+// app.post('/api/users', (req, res) => {
+//    if(!req.body) return res.status(400)
+//    let user = {
+//       name: req.body.name,
+//       age: req.body.age
+//    }
+//    let users = JSON.parse(fs.readFileSync('users.json', {encoding: 'utf-8'}))
+//    const maxId = Math.max.apply(this, users.map(u => +u.id))
+//    user.id = maxId + 1 
+//    users.push(user)
+//    let data = JSON.stringify(users)
+//    fs.writeFileSync('users.json', data)
+//    res.send(data)
+// })
 
 // удаление данных
 app.delete('/api/users/:id', (req, res) => {
@@ -149,6 +168,6 @@ app.put('/api/users/:id', (req, res) =>{
    }
 })
 
-app.listen(3000, () => {
-   console.log('[Server has been started...]')
-})
+// app.listen(3000, () => {
+//    console.log('[Server has been started...]')
+// })
